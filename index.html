@@ -256,10 +256,11 @@
         try {
             document.querySelector('.btn-calc').innerText = "幫你計算中... ⏳";
             
+            // 將原本的 localhost 改成你剛拿到的 Render 網址
             const response = await fetch('https://green-travel-app.onrender.com/api/calculate_full', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData)
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData)
             });
 
             const result = await response.json();
