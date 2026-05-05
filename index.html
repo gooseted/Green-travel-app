@@ -18,7 +18,7 @@
             });
         }
     </script>
-    
+
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -256,7 +256,7 @@
         try {
             document.querySelector('.btn-calc').innerText = "幫你計算中... ⏳";
             
-            const response = await fetch('http://127.0.0.1:8000/api/calculate_full', {
+            const response = await fetch('https://green-travel-app.onrender.com', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestData)
