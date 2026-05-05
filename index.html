@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小樹碳足跡計算機 🌳 (行動優先版)</title>
+    <!-- 引入 PWA 設定檔 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#38b2ac">
+
+    <!-- 註冊 Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker 註冊成功！', reg))
+                    .catch(err => console.log('Service Worker 註冊失敗：', err));
+            });
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f7f4;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        /* 主卡片樣式 */
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 450px; /* 限制最大寬度，手機上看剛好，電腦上看也不會太寬 */
+        }
+        h1 { text-align: center; color: #2c7a7b; font-size: 24px; margin-top: 0;}
+        
+        /* 內嵌式提示框樣式 */
+        .inline-tip {
+            background-color: #e6fffa;
+            border-left: 4px solid #319795;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border-radius: 0 8px 8px 0;
+            font-size: 14px;
+            color: #285e61;
+            line-height: 1.5;
+        }
+        .inline-tip ul {
+            margin: 5px 0 0;
+            padding-left: 20px;
+        }
+        .inline-tip li { margin-bottom: 4px; }
+        .inline-tip b { color: #2c7a7b; }
+
+        .segment-box {
+            background-color: #f8fafc; border: 2px dashed #9ae6b4;
+            border-radius: 15px; padding: 15px; margin-bottom: 15px;
+        }
+        .accom-box {
+            background-color: #ebf8ff; border: 2px dashed #90cdf4;
+            border-radius: 15px; padding: 15px; margin-bottom: 15px;
+        }
+        
+        .box-title {
+            font-weight: bold; color: #4a5568; margin-bottom: 10px;
+            display: flex; justify-content: space-between;
+        }
+        .remove-btn { color: #e53e3e; cursor: pointer; font-size: 14px; font-weight: bold; }
+        .form-group { margin-bottom: 10px; }
+        
+        input, select {
+            width: 100%; padding: 10px; border: 1px solid #e2e8f0;
+            border-radius: 8px; font-size: 15px; box-sizing: border-box; outline: none;
+        }
+
+        /* 帶有單位的輸入框容器 */
+        .input-with-unit {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .input-with-unit input { flex: 1; }
+        .input-with-unit span {
+            color: #4a5568;
+            font-weight: bold;
+            font-size: 16px;
+            white-space: nowrap;
+        }
+        
+        .btn-add-trans {
+            width: 100%; padding: 10px; background-color: #f0fff4; color: #38a169;
+            border: 2px dashed #9ae6b4; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 25px;
+        }
+        .btn-add-accom {
+            width: 100%; padding: 10px; background-color: #ebf8ff; color: #3182ce;
+            border: 2px dashed #90cdf4; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 25px;
+        }
+        .btn-calc {
+            width: 100%; padding: 15px; background-color: #38b2ac; color: white;
+            border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer;
+        }
+        
+        .result-box {
+            margin-top: 25px; padding: 20px; background-color: #e6fffa;
+            border-radius: 15px; text-align: center; display: none;
+        }
+        .carbon-num { font-size: 36px; font-weight: bold; color: #d53f8c; margin: 10px 0; }
+        .breakdown { font-size: 14px; color: #718096; margin-bottom: 10px; }
+        .tree-emojis { font-size: 28px; margin-top: 10px; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>小樹碳足跡 🌳</h1>
+    
+    <!-- 交通行程區域 -->
+    <div class="inline-tip">
+        <b>🚗 交通填寫小提醒：</b>
+        <ul>
+            <li>輸入<b>知名地標</b>或<b>完整地址</b>可提高距離計算準確度。</li>
+            <li>若為「汽車」，系統會自動將碳排平攤給所有搭乘者。</li>
+            <li>點擊下方按鈕可無限新增換乘路線。</li>
+        </ul>
+    </div>
+
+    <div id="segments-container">
+        <div class="segment-box">
+            <div class="box-title">🚗 交通行程 <span class="remove-btn" onclick="this.parentElement.parentElement.remove()">❌</span></div>
+            <div class="form-group">
+                <select class="transport">
+                    <option value="car">🚗 汽車</option>
+                    <option value="scooter">🛵 機車</option>
+                    <option value="hsr">🚄 高鐵</option>
+                    <option value="tra">🚂 台鐵</option>
+                    <option value="bus">🚌 客運/公車</option>
+                </select>
+            </div>
+            <div class="form-group"><input type="text" class="origin" placeholder="出發地 (例: 台北101)"></div>
+            <div class="form-group"><input type="text" class="dest" placeholder="目的地 (例: 台中火車站)"></div>
+            <div class="form-group input-with-unit">
+                <input type="number" class="passengers" placeholder="搭乘人數" value="2" min="1">
+                <span>人</span>
+            </div>
+        </div>
+    </div>
+    <button class="btn-add-trans" onclick="addSegment()">➕ 新增交通行程</button>
+
+    <!-- 住宿紀錄區域 -->
+    <div class="inline-tip">
+        <b>🏨 住宿填寫小提醒：</b>
+        <ul>
+            <li>選擇<b>環保旅店</b>的碳排量會大幅低於高級渡假村喔！</li>
+            <li>不過夜的單日行程請直接留空即可。</li>
+        </ul>
+    </div>
+
+    <div id="accom-container"></div>
+    <button class="btn-add-accom" onclick="addAccom()">➕ 新增住宿紀錄</button>
+
+    <!-- 計算按鈕 -->
+    <button class="btn-calc" onclick="calculateFull()">計算總碳排放 ✨</button>
+
+    <div class="result-box" id="resultBox">
+        <div>這趟旅程的總碳排放為</div>
+        <div class="carbon-num" id="carbonResult">0 kg</div>
+        <div class="breakdown" id="breakdownResult"></div>
+        <div style="color: #2c7a7b; font-weight: bold;">
+            相當於需要種植 <strong id="treeResult">0</strong> 棵樹<br>花費一整年才能抵銷！🌍
+        </div>
+        <div class="tree-emojis" id="treeEmojis"></div>
+    </div>
+</div>
+
+<script>
+    function addSegment() {
+        const container = document.getElementById('segments-container');
+        const newBox = document.createElement('div');
+        newBox.className = 'segment-box';
+        newBox.innerHTML = `
+            <div class="box-title">🚗 交通行程 <span class="remove-btn" onclick="this.parentElement.parentElement.remove()">❌</span></div>
+            <div class="form-group">
+                <select class="transport">
+                    <option value="hsr">🚄 高鐵</option>
+                    <option value="tra">🚂 台鐵</option>
+                    <option value="bus">🚌 客運/公車</option>
+                    <option value="car">🚗 汽車</option>
+                    <option value="scooter">🛵 機車</option>
+                </select>
+            </div>
+            <div class="form-group"><input type="text" class="origin" placeholder="出發地"></div>
+            <div class="form-group"><input type="text" class="dest" placeholder="目的地"></div>
+            <div class="form-group input-with-unit">
+                <input type="number" class="passengers" placeholder="搭乘人數" value="1" min="1">
+                <span>人</span>
+            </div>
+        `;
+        container.appendChild(newBox);
+    }
+
+    function addAccom() {
+        const container = document.getElementById('accom-container');
+        const newBox = document.createElement('div');
+        newBox.className = 'accom-box';
+        newBox.innerHTML = `
+            <div class="box-title">🏨 住宿紀錄 <span class="remove-btn" onclick="this.parentElement.parentElement.remove()">❌</span></div>
+            <div class="form-group">
+                <select class="accom_type">
+                    <option value="standard">🏨 一般旅館/民宿</option>
+                    <option value="eco">🌿 環保旅店/青旅</option>
+                    <option value="luxury">✨ 星級飯店/渡假村</option>
+                </select>
+            </div>
+            <div class="form-group input-with-unit">
+                <input type="number" class="nights" placeholder="住宿晚數" value="1" min="1">
+                <span>晚</span>
+            </div>
+        `;
+        container.appendChild(newBox);
+    }
+
+    async function calculateFull() {
+        const segBoxes = document.querySelectorAll('.segment-box');
+        const accBoxes = document.querySelectorAll('.accom-box');
+        
+        const segmentsData = [];
+        segBoxes.forEach(box => {
+            segmentsData.push({
+                transport_type: box.querySelector('.transport').value,
+                origin: box.querySelector('.origin').value,
+                destination: box.querySelector('.dest').value,
+                passengers: parseInt(box.querySelector('.passengers').value) || 1
+            });
+        });
+
+        const accomData = [];
+        accBoxes.forEach(box => {
+            accomData.push({
+                accom_type: box.querySelector('.accom_type').value,
+                nights: parseInt(box.querySelector('.nights').value) || 1
+            });
+        });
+
+        const requestData = {
+            segments: segmentsData,
+            accommodations: accomData
+        };
+
+        try {
+            document.querySelector('.btn-calc').innerText = "幫你計算中... ⏳";
+            
+            const response = await fetch('http://127.0.0.1:8000/api/calculate_full', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData)
+            });
+
+            const result = await response.json();
+
+            if(result.status === "success") {
+                const total = result.data.total_carbon_kg;
+                const trans = result.data.transport_carbon_kg;
+                const accom = result.data.accom_carbon_kg;
+                const treeNeeded = Math.ceil(total / 12); 
+
+                document.getElementById('carbonResult').innerText = total + " kg";
+                document.getElementById('breakdownResult').innerText = `(交通: ${trans}kg | 住宿: ${accom}kg)`;
+                document.getElementById('treeResult').innerText = treeNeeded;
+                
+                let trees = "";
+                for(let i=0; i<treeNeeded && i<30; i++) { trees += "🌳"; }
+                if(treeNeeded > 30) trees += " ...等一座森林！";
+                document.getElementById('treeEmojis').innerText = trees;
+
+                document.getElementById('resultBox').style.display = 'block';
+            } else {
+                alert("計算失敗：" + JSON.stringify(result));
+            }
+        } catch (error) {
+            alert("連線失敗！請確認後端 FastAPI 伺服器有在運作。");
+        } finally {
+            document.querySelector('.btn-calc').innerText = "計算總碳排放 ✨";
+        }
+    }
+</script>
+
+</body>
+</html>

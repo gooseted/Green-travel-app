@@ -1,0 +1,21 @@
+{
+  "name": "小樹碳足跡計算機",
+  "short_name": "小樹碳足跡",
+  "description": "計算旅遊交通與住宿碳排的環保小幫手",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f0f7f4",
+  "theme_color": "#38b2ac",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
