@@ -1,6 +1,6 @@
 {
-  "name": "小樹碳足跡計算機",
-  "short_name": "小樹碳足跡",
+  "name": "碳為觀址-碳足跡計算機",
+  "short_name": "碳為觀址",
   "description": "計算旅遊交通與住宿碳排的環保小幫手",
   "start_url": "./index.html",
   "display": "standalone",
